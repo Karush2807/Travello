@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { HiMail, HiLockClosed } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast'; 
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -8,9 +11,35 @@ const Login = () => {
     password: '',
   });
 
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const { token, user } = response.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      toast.success("Login Successful");
+      navigate('/dashboard'); 
+
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("Login failed: " + error.response?.data?.message || "An error occurred");
+    }
   };
 
   const handleMockGoogleSignIn = () => {
@@ -21,12 +50,6 @@ const Login = () => {
       email: '',
       password: '',
     });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form Data:', formData);
-    // Handle form submission logic here
   };
 
   return (

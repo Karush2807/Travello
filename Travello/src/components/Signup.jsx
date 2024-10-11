@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import countries from './countries';
-import { HiUser, HiMail, HiLockClosed, HiLocationMarker, HiPhone } from 'react-icons/hi';
+import { HiUser, HiMail, HiLockClosed, HiPhone } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import {googleSignIn} from "../config/firebase.js"
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -23,36 +28,75 @@ const Signup = () => {
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleMockGoogleSignIn = () => {
-    console.log('Mock Google Sign-In Success:', {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/register', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        location: formData.location,
+        country: formData.country,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        phone: formData.phone,
+      },
+      {
+        headers: {
+            "Content-Type": "application/json",
+        },
+        withCredentials: true,
     });
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      location: '',
-      country: '',
-      gender: '',
-      dateOfBirth: '',
-      phone: '',
-      rememberMe: false,
-    });
+
+      console.log('Server Response:', response.data);
+      toast.success(response.data.message);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error during registration:', error.response ? error.response.data : error.message);
+      toast.error('Registration Failed');
+    }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form Data:', formData);
-    // Handle form submission logic here
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await googleSignIn();
+      const user = result.user;
+
+      // Assuming you have an API endpoint to save the user to MongoDB
+      const userData = {
+          // uid: user.uid,
+          // displayName: user.displayName,
+          email: user.email,
+          // photoURL: user.photoURL, 
+      };
+
+      // Send user data to your backend using Axios
+      const response = await axios.post('http://localhost:5000/api/auth/google', userData, {
+          headers: {
+              'Content-Type': 'application/json',
+          },
+      });
+
+      if (response.status !== 200) {
+          throw new Error('Failed to save user data to database');
+      }
+
+      console.log('User data saved successfully:', userData);
+      toast.success("User registered Successfully ! ");
+      navigate('/dashboard'); // Redirect after sign-in
+  } catch (error) {
+      console.error('Error during Google Sign-In:', error);
+  }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-green-200">
-      {/* Centered Form Container */}
       <div className="flex flex-col justify-center items-center p-10 w-full max-w-md bg-white shadow-lg rounded-lg">
         <h1 className="text-4xl font-bold mb-1 text-emerald-800">Sign Up</h1>
         <p className="text-lg text-gray-600 mb-4">It's quick and easy!</p>
@@ -198,17 +242,13 @@ const Signup = () => {
         <div className="mt-4 flex items-center justify-center">
           <p className="text-gray-600">or continue with</p>
           <button
-            onClick={handleMockGoogleSignIn}
+            onClick={handleGoogleSignIn}
             className="ml-4 flex items-center p-3 bg-white border border-emerald-800 text-emerald-800 rounded hover:bg-emerald-100 transition duration-200"
           >
-            <FcGoogle className="mr-2" />
+            <FcGoogle className="w-6 h-6 mr-2" />
             Google
           </button>
         </div>
-        <p className="mt-4 text-gray-600">
-          Already a member? 
-          <a href="/signin" className="text-emerald-800 hover:underline"> Sign in</a>
-        </p>
       </div>
     </div>
   );
