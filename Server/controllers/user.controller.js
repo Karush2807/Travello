@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import admin from 'firebase-admin';
 import { validationResult } from 'express-validator';
+import GoogleUser from "../models/googleuser.model.js"
 
 const registerUser = async (req, res) => {
     const { firstName, lastName, email, password, country, phone, gender, dateOfBirth } = req.body;
@@ -33,45 +34,33 @@ const registerUser = async (req, res) => {
   
   // Google Auth
   export const googleSignIn = async (req, res) => {
-    // const { token } = req.body;
-  
-    // try {
-    //   // Verify the token with Firebase Admin SDK
-    //   const decodedToken = await admin.auth().verifyIdToken(token);
-    //   const { email, name } = decodedToken;
-  
-    //   let user = await User.findOne({ email });
-    //   if (!user) {
-    //     user = new User({
-    //       firstName: name.split(' ')[0],
-    //       lastName: name.split(' ')[1],
-    //       email,
-    //       googleId: decodedToken.uid,
-    //     });
-    //     await user.save();
-    //   }
-  
-    //   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    //   res.status(200).json({ message: 'Google sign-in successful', token: accessToken });
-    // } 
+    const { token } = req.body;
+
     try {
-        const {  email } = req.body;
+        const decodedToken = await verifyFirebaseToken(token);
+        const { email, name, uid } = decodedToken;
 
-        // Check if the user already exists
-        let user = await User.findOne({ email });
+        let user = await GoogleUser.findOne({ email });
+    
         if (!user) {
-
-            user = new User({  email });
-            await user.save();
-            return res.status(201).json({ message: 'User created', user });
+          user = new GoogleUser({
+            email,
+            name,
+            googleId: uid,  // Firebase UID
+          });
+    
+          await user.save(); 
         }
-
-        // User already exists
-        res.status(200).json({ message: 'User already exists', user });
-    }
-    catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+    
+        // Creating session, token, or any response for logged-in user
+        res.status(200).json({
+          message: 'Google Sign-In successful',
+          user,
+        });
+      } catch (error) {
+        console.error('Error with Google Sign-In:', error.message);
+        res.status(400).json({ message: 'Google Sign-In failed' });
+      }
   };
 
 

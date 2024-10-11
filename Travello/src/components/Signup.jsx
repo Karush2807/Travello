@@ -5,7 +5,8 @@ import { HiUser, HiMail, HiLockClosed, HiPhone } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import {googleSignIn} from "../config/firebase.js"
+import { auth, googleProvider } from '../config/firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -65,34 +66,20 @@ const Signup = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await googleSignIn();
-      const user = result.user;
+      const result = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
 
-      // Assuming you have an API endpoint to save the user to MongoDB
-      const userData = {
-          // uid: user.uid,
-          // displayName: user.displayName,
-          email: user.email,
-          // photoURL: user.photoURL, 
-      };
-
-      // Send user data to your backend using Axios
-      const response = await axios.post('http://localhost:5000/api/auth/google', userData, {
-          headers: {
-              'Content-Type': 'application/json',
-          },
+      const response = await axios.post('http://localhost:5000/api/auth/google', {
+        token,
+      }, {
+        withCredentials: true,  // Send cookies to server
       });
-
-      if (response.status !== 200) {
-          throw new Error('Failed to save user data to database');
-      }
-
-      console.log('User data saved successfully:', userData);
-      toast.success("User registered Successfully ! ");
-      navigate('/dashboard'); // Redirect after sign-in
-  } catch (error) {
-      console.error('Error during Google Sign-In:', error);
-  }
+      toast.success("Logged in ! ")
+      console.log('Google Sign-In success:', response.data);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error with Google Sign-In:', error.message);
+    }
   };
 
   return (
