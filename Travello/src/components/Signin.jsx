@@ -3,7 +3,9 @@ import { HiMail, HiLockClosed } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast'; 
+import { toast } from 'react-hot-toast';
+import { auth, googleProvider } from '../config/firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -20,7 +22,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
         headers: {
@@ -29,12 +31,12 @@ const Login = () => {
       });
 
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       toast.success("Login Successful");
-      navigate('/dashboard'); 
+      navigate('/dashboard');
 
     } catch (error) {
       console.error('Login error:', error);
@@ -42,14 +44,22 @@ const Login = () => {
     }
   };
 
-  const handleMockGoogleSignIn = () => {
-    console.log('Mock Google Sign-In Success:', {
-      email: formData.email,
-    });
-    setFormData({
-      email: '',
-      password: '',
-    });
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
+
+      const response = await axios.post('http://localhost:5000/api/auth/google', {
+        token,
+      }, {
+        withCredentials: true,  // Send cookies 
+      });
+      toast.success("Logged in ! ")
+      console.log('Google Sign-In success:', response.data);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error with Google Sign-In:', error.message);
+    }
   };
 
   return (
@@ -99,7 +109,7 @@ const Login = () => {
         <div className="mt-4 flex items-center justify-center">
           <p className="text-gray-600">or continue with</p>
           <button
-            onClick={handleMockGoogleSignIn}
+            onClick={handleGoogleSignIn}
             className="ml-4 flex items-center p-3 bg-white border border-emerald-800 text-emerald-800 rounded hover:bg-emerald-100 transition duration-200"
           >
             <FcGoogle className="mr-2 w-5 h-5" />
@@ -107,7 +117,7 @@ const Login = () => {
           </button>
         </div>
         <p className="mt-4 text-gray-600">
-          Don't have an account? 
+          Don't have an account?
           <a href="/signup" className="text-emerald-800 hover:underline"> Signup</a>
         </p>
       </div>
